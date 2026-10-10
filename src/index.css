@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/*
+ * Tema "cangiante": i colori sono variabili CSS impostate in base al tipo
+ * di struttura (attributo data-theme su <html>). Tailwind le espone come
+ * classi bg-surface, text-accent, border-line, ecc.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --font-sans: var(--font);
+  --radius-card: var(--radius);
+  --radius-btn: var(--btn-radius);
+}
+
+:root {
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 0.75rem;
+  --btn-radius: var(--radius);
+  --font-display: var(--font);
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f0f1f4;
+  --text: #1f2330;
+  --muted: #6b7080;
+  --border: #e2e4ea;
+  --accent: #475569;
+  --accent-soft: #e7eaef;
+  --on-accent: #ffffff;
+  --danger: #c2372f;
+  --danger-soft: #fbe9e7;
+  --ok: #1d7a4a;
+  --ok-soft: #e3f4ea;
+  --warn: #a35a00;
+  --warn-soft: #fdf1dc;
+  color-scheme: light;
+}
+
+/* Palestra: energico, scuro con accento arancio. */
+[data-theme="palestra"] {
+  --bg: #0e1014;
+  --surface: #171a21;
+  --surface-2: #20242d;
+  --text: #eceef2;
+  --muted: #9097a6;
+  --border: #2b303b;
+  --accent: #f97316;
+  --accent-soft: #3a2415;
+  --on-accent: #16110c;
+  --danger: #f26b5e;
+  --danger-soft: #3b1d1b;
+  --ok: #4ccb86;
+  --ok-soft: #173024;
+  --warn: #f1b44c;
+  --warn-soft: #362a14;
+  --radius: 0.5rem;
+  color-scheme: dark;
+}
+
+/* Ritmica: elegante, rosa/viola. */
+[data-theme="ritmica"] {
+  --font: "Georgia", "Iowan Old Style", ui-serif, serif;
+  --bg: #fbf6fa;
+  --surface: #ffffff;
+  --surface-2: #f6ecf4;
+  --text: #34203a;
+  --muted: #86718a;
+  --border: #eddcea;
+  --accent: #9b3d8f;
+  --accent-soft: #f5e3f1;
+  --on-accent: #ffffff;
+  --radius: 1.1rem;
+}
+
+/*
+ * Medico: pulito e clinico. Palette ispirata a un centro di fisioterapia:
+ * blu brillante (#009de2) per i dettagli, blu notte (#242752) per i testi,
+ * Plus Jakarta Sans + Barlow Condensed per i titoli, pulsanti a pillola.
+ * Per pulsanti e testi si usa un blu più scuro (#0076ad) per un contrasto AA.
+ */
+[data-theme="medico"] {
+  --font: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Plus Jakarta Sans Variable", ui-sans-serif, sans-serif;
+  --brand: #009de2;
+  --bg: #f7fafd;
+  --surface: #ffffff;
+  --surface-2: #eef5fa;
+  --text: #242752;
+  --muted: #5c6f84;
+  --border: #d5e5ee;
+  --accent: #0076ad;
+  --accent-soft: #e9f6fd;
+  --on-accent: #ffffff;
+  --radius: 0.9rem;
+  --btn-radius: 999px;
+}
+
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-theme="ritmica"] h1, [data-theme="ritmica"] h2 {
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="palestra"] h1, [data-theme="palestra"] h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Medico: titoli di pagina in Barlow Condensed con sottolineatura blu, pulsanti come sul sito. */
+[data-theme="medico"] h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 2.1rem;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+[data-theme="medico"] h1::after {
+  content: "";
+  display: block;
+  width: 2.5rem;
+  height: 3px;
+  margin-top: 0.45rem;
+  border-radius: 3px;
+  background: var(--brand);
+}
+[data-theme="medico"] h2, [data-theme="medico"] h3 {
+  font-weight: 700;
+}
+[data-theme="medico"] .btn {
+  font-weight: 600;
+}
+[data-theme="medico"] .btn-primary:hover:not(:disabled) {
+  background: var(--text);
+  filter: none;
+}
+[data-theme="medico"] .brand-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+[data-theme="medico"] :focus-visible {
+  outline-color: var(--brand);
+}
+
+/* Nel layer base: altrimenti vincerebbe sulle classi Tailwind (colore e dimensione dei pulsanti). */
+@layer base {
+  input, select, textarea, button {
+    font: inherit;
+    color: inherit;
+  }
+}
