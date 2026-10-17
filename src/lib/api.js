@@ -69,7 +69,7 @@ export const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, { body }),
   put: (path, body) => request('PUT', path, { body }),
-  del: (path) => request('DELETE', path),
+  del: (path, body) => request('DELETE', path, body === undefined ? {} : { body }),
   upload: (path, form) => request('POST', path, { form }),
 }
 

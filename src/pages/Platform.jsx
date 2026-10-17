@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, Link2, Plus } from 'lucide-react'
+import { Building2, Link2, Plus, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { Badge, Button, Card, Checkbox, CopyField, Empty, ErrorBanner, Field, Input, Loading, Modal, PageHeader, Select, useLoad } from '../components/ui'
 
@@ -15,6 +15,7 @@ const TYPES = { palestra: 'Palestra', ritmica: 'Ginnastica ritmica', medico: 'St
 export default function Platform() {
   const tenants = useLoad(() => api.get('/api/tenants'), [])
   const [creating, setCreating] = useState(false)
+  const [deleting, setDeleting] = useState(null)
   const [invites, setInvites] = useState({})
   const [error, setError] = useState(null)
 
@@ -75,6 +76,9 @@ export default function Platform() {
                 <div className="flex gap-2">
                   <Button variant="secondary" size="sm" onClick={() => invite(t)}><Link2 className="size-3.5" /> Invito amministratore</Button>
                   <Button variant={t.suspended ? 'primary' : 'danger'} size="sm" onClick={() => suspend(t)}>{t.suspended ? 'Riattiva' : 'Sospendi'}</Button>
+                  {t.suspended && (
+                    <Button variant="danger" size="sm" onClick={() => setDeleting(t)}><Trash2 className="size-3.5" /> Elimina</Button>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 pt-4 border-t border-line">
@@ -91,6 +95,13 @@ export default function Platform() {
             </Card>
           ))}
         </div>
+      )}
+      {deleting && (
+        <DeleteTenant
+          tenant={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => { setDeleting(null); tenants.reload() }}
+        />
       )}
       {creating && <CreateTenant onClose={() => setCreating(false)} onSaved={() => { setCreating(false); tenants.reload() }} />}
     </>
@@ -123,6 +134,50 @@ function CreateTenant({ onClose, onSaved }) {
           </Select>
         </Field>
         <Field label="Email di contatto"><Input type="email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} /></Field>
+      </form>
+    </Modal>
+  )
+}
+
+/** Eliminazione definitiva: solo per strutture sospese, e si deve riscrivere il nome esatto. */
+function DeleteTenant({ tenant, onClose, onDeleted }) {
+  const [typed, setTyped] = useState('')
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const matches = typed.trim() === tenant.name
+
+  async function remove(e) {
+    e.preventDefault()
+    if (!matches) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.del(`/api/tenants/${tenant.id}`, { confirmName: typed.trim() })
+      onDeleted()
+    } catch (err) {
+      setError(err)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal open title="Elimina struttura" onClose={onClose}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Annulla</Button>
+          <Button type="submit" form="delete-tenant-form" variant="danger" disabled={!matches || busy}>Elimina definitivamente</Button>
+        </>
+      }>
+      <ErrorBanner error={error} />
+      <form id="delete-tenant-form" onSubmit={remove} className="space-y-4">
+        <p className="text-sm">
+          Stai per eliminare <strong>{tenant.name}</strong>. Verranno cancellati per sempre: iscritti, prenotazioni, corsi,
+          documenti e file caricati, e gli account di chi lavora o si è registrato in questa struttura.
+          <strong> L'operazione non si può annullare.</strong>
+        </p>
+        <Field label={`Per confermare scrivi: ${tenant.name}`}>
+          <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoFocus />
+        </Field>
       </form>
     </Modal>
   )

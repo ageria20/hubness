@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { Button, Card, ErrorBanner, Field, Input, Tabs } from '../components/ui'
 
@@ -64,6 +65,11 @@ export default function Login({ intro }) {
           <Button type="submit" className="w-full" disabled={busy}>
             {mode === 'login' ? 'Accedi' : 'Crea account'}
           </Button>
+          {mode === 'login' && (
+            <p className="text-sm text-center">
+              <Link to="/forgot-password" className="text-accent hover:underline">Password dimenticata?</Link>
+            </p>
+          )}
         </form>
       </Card>
     </div>

@@ -1,7 +1,9 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './auth/AuthContext'
 import Login from './auth/Login'
 import RedeemInvite from './auth/RedeemInvite'
+import ForgotPassword from './auth/ForgotPassword'
+import ResetPassword from './auth/ResetPassword'
 import NoTenant from './auth/NoTenant'
 import Layout from './components/Layout'
 import { Loading } from './components/ui'
@@ -18,6 +20,16 @@ import Platform from './pages/Platform'
 
 export default function App() {
   const { me, loading, isClient, isOperator, isSuperadmin, can } = useAuth()
+  const { pathname } = useLocation()
+
+  // Il link ricevuto per email deve funzionare anche se nel browser c'è già una sessione aperta.
+  if (pathname.startsWith('/reset-password/')) {
+    return (
+      <Routes>
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
+      </Routes>
+    )
+  }
 
   if (loading) return <Loading />
 
@@ -25,6 +37,7 @@ export default function App() {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/invite/:token" element={<RedeemInvite />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
