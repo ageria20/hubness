@@ -211,33 +211,14 @@ function CourseForm({ course, staff, onClose, onSaved }) {
           <Textarea value={form.note} onChange={set('note')} />
         </Field>
 
-        {openGym ? (
-          <OpenGymSlots
-            schedules={form.schedules}
-            durationMin={Number(form.durationMin) || 60}
-            onChange={(schedules) => setForm({ ...form, schedules })}
-          />
-        ) : (
-        <div className="sm:col-span-2">
-          <p className="text-sm font-medium mb-2">Giorni e orari</p>
-          <div className="space-y-2">
-            {form.schedules.map((s, i) => (
-              <div key={i} className="flex gap-2">
-                <Select value={s.weekday} onChange={(e) => setSchedule(i, { weekday: Number(e.target.value) })} className="flex-1">
-                  {WEEKDAYS.map((d, n) => <option key={n} value={n}>{d}</option>)}
-                </Select>
-                <Input type="time" required value={s.startTime} onChange={(e) => setSchedule(i, { startTime: e.target.value })} className="w-32" />
-                <Button variant="ghost" onClick={() => setForm({ ...form, schedules: form.schedules.filter((_, j) => j !== i) })} aria-label="Rimuovi">
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
-            ))}
-          </div>
-          <Button variant="secondary" size="sm" className="mt-2" onClick={() => setForm({ ...form, schedules: [...form.schedules, { weekday: 0, startTime: '' }] })}>
-            <Plus className="size-3.5" /> Aggiungi orario
-          </Button>
-        </div>
-        )}
+        <SlotPlanner
+          key={form.kind}
+          schedules={form.schedules}
+          durationMin={Number(form.durationMin) || 60}
+          openGym={openGym}
+          noun={type === 'medico' ? 'appuntamenti' : 'fasce'}
+          onChange={(schedules) => setForm({ ...form, schedules })}
+        />
 
         <div className="sm:col-span-2">
           <Checkbox label="Attivo (prenotabile)" checked={form.active} onChange={set('active')} />
@@ -269,11 +250,17 @@ function generateSlots(days, from, to, step, lastFrom) {
   return out
 }
 
-function OpenGymSlots({ schedules, durationMin, onChange }) {
-  const [days, setDays] = useState(new Set([0, 1, 2, 3, 4, 5, 6]))
-  const [from, setFrom] = useState('06:00')
-  const [to, setTo] = useState('00:00')
+/**
+ * Fasce orarie del corso: si scelgono i giorni e l'intervallo, e le fasce vengono generate in base
+ * alla durata in minuti (es. 09:00–13:00 con 30 min → 8 fasce). Si possono aggiungere o togliere
+ * singole fasce. Vale per tutti i tipi di corso; l'"ultima fascia" più lunga solo per l'Open Gym.
+ */
+function SlotPlanner({ schedules, durationMin, openGym, noun, onChange }) {
+  const [days, setDays] = useState(new Set(openGym ? [0, 1, 2, 3, 4, 5, 6] : []))
+  const [from, setFrom] = useState(openGym ? '06:00' : '09:00')
+  const [to, setTo] = useState(openGym ? '00:00' : '13:00')
   const [lastFrom, setLastFrom] = useState('')
+  const [single, setSingle] = useState({ weekday: 0, startTime: '' })
 
   function toggleDay(d) {
     const next = new Set(days)
@@ -283,7 +270,14 @@ function OpenGymSlots({ schedules, durationMin, onChange }) {
 
   function generate() {
     const kept = schedules.filter((s) => !days.has(Number(s.weekday)))
-    onChange([...kept, ...generateSlots([...days].sort(), from, to, durationMin, lastFrom)])
+    onChange([...kept, ...generateSlots([...days].sort(), from, to, durationMin, openGym ? lastFrom : '')])
+  }
+
+  function addSingle() {
+    if (!single.startTime) return
+    const exists = schedules.some((s) => Number(s.weekday) === Number(single.weekday) && s.startTime === single.startTime)
+    if (!exists) onChange([...schedules, { weekday: Number(single.weekday), startTime: single.startTime, durationMin: null }])
+    setSingle({ ...single, startTime: '' })
   }
 
   const byDay = WEEKDAYS.map((_, d) => schedules.filter((s) => Number(s.weekday) === d).sort((a, b) => a.startTime.localeCompare(b.startTime)))
@@ -295,11 +289,11 @@ function OpenGymSlots({ schedules, durationMin, onChange }) {
   return (
     <div className="sm:col-span-2 space-y-4">
       <div className="rounded-card border border-dashed border-line p-4 space-y-3">
-        <p className="text-sm font-medium">Genera le fasce orarie</p>
+        <p className="text-sm font-medium">Genera {openGym ? 'le fasce orarie' : `gli orari (${noun})`}</p>
         <div className="flex flex-wrap gap-1.5">
           {WEEKDAYS_SHORT.map((d, i) => (
-            <button key={i} type="button" onClick={() => toggleDay(i)}
-              className={cx('rounded-full border px-3 py-1 text-sm', days.has(i) ? 'border-accent bg-accent-soft' : 'border-line text-muted')}>
+            <button key={i} type="button" aria-pressed={days.has(i)} onClick={() => toggleDay(i)}
+              className={cx('rounded-full border px-3 py-1 text-sm', days.has(i) ? 'border-accent bg-accent text-on-accent' : 'border-line text-muted hover:border-accent/50')}>
               {d}
             </button>
           ))}
@@ -307,32 +301,40 @@ function OpenGymSlots({ schedules, durationMin, onChange }) {
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Dalle"><Input type="time" value={from} onChange={(e) => setFrom(e.target.value)} className="w-32" /></Field>
           <Field label="Alle" hint="00:00 = mezzanotte"><Input type="time" value={to} onChange={(e) => setTo(e.target.value)} className="w-32" /></Field>
-          <Field label="Ultima fascia dalle" hint="Facoltativo: unica fascia fino alla chiusura"><Input type="time" value={lastFrom} onChange={(e) => setLastFrom(e.target.value)} className="w-32" /></Field>
+          {openGym && (
+            <Field label="Ultima fascia dalle" hint="Facoltativo: unica fascia fino alla chiusura"><Input type="time" value={lastFrom} onChange={(e) => setLastFrom(e.target.value)} className="w-32" /></Field>
+          )}
           <Button variant="secondary" onClick={generate} disabled={days.size === 0}>Genera</Button>
         </div>
         <p className="text-xs text-muted">
-          Crea una fascia ogni {durationMin} minuti nei giorni selezionati{lastFrom ? `, con un'unica fascia finale dalle ${lastFrom} alla chiusura` : ''}, sostituendo quelle già presenti in quei giorni.
+          {days.size === 0
+            ? 'Seleziona i giorni, poi premi Genera.'
+            : `Crea ${noun === 'appuntamenti' ? 'un appuntamento' : 'una fascia'} ogni ${durationMin} minuti nei giorni selezionati${openGym && lastFrom ? `, con un'unica fascia finale dalle ${lastFrom} alla chiusura` : ''}, sostituendo quelli già presenti in quei giorni.`}
         </p>
       </div>
+
       <div className="space-y-2">
-        <p className="text-sm font-medium">Fasce prenotabili</p>
+        <p className="text-sm font-medium">{openGym ? 'Fasce prenotabili' : 'Orari prenotabili'}</p>
         {overlapDays.length > 0 && (
           <p className="rounded-card bg-danger-soft text-danger px-3 py-2 text-sm">
-            Fasce sovrapposte ({overlapDays.map((d) => WEEKDAYS_SHORT[d]).join(', ')}): ogni fascia deve iniziare quando finisce la precedente.
-            Se hai cambiato la durata, premi <strong>Genera</strong> per ricrearle.
+            Orari sovrapposti ({overlapDays.map((d) => WEEKDAYS_SHORT[d]).join(', ')}): ognuno deve iniziare quando finisce il precedente.
+            Se hai cambiato la durata, premi <strong>Genera</strong> per ricrearli.
           </p>
+        )}
+        {schedules.length === 0 && (
+          <p className="text-sm text-muted">Nessun orario: finché non ne aggiungi, non si potrà prenotare.</p>
         )}
         {byDay.map((list, d) => (
           <div key={d} className="flex gap-3 items-start">
             <span className="w-10 text-sm text-muted pt-1">{WEEKDAYS_SHORT[d]}</span>
             {list.length === 0 ? (
-              <span className="text-sm text-muted pt-1">Chiuso</span>
+              <span className="text-sm text-muted pt-1">{openGym ? 'Chiuso' : '—'}</span>
             ) : (
               <div className="flex flex-wrap gap-1.5 flex-1">
                 {list.map((s) => (
                   <span key={s.startTime} className="inline-flex items-center gap-1 rounded-full bg-surface-2 border border-line pl-2.5 pr-1 py-0.5 text-xs">
                     {s.startTime}–{addMinutes(s.startTime, s.durationMin ?? durationMin)}
-                    <button type="button" aria-label="Rimuovi fascia" className="rounded-full p-0.5 hover:bg-line"
+                    <button type="button" aria-label="Rimuovi" className="rounded-full p-0.5 hover:bg-line"
                       onClick={() => onChange(schedules.filter((x) => !(Number(x.weekday) === d && x.startTime === s.startTime)))}>
                       <X className="size-3" />
                     </button>
@@ -342,6 +344,16 @@ function OpenGymSlots({ schedules, durationMin, onChange }) {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <Field label="Aggiungi un singolo orario">
+          <Select value={single.weekday} onChange={(e) => setSingle({ ...single, weekday: Number(e.target.value) })} className="w-40">
+            {WEEKDAYS.map((d, n) => <option key={n} value={n}>{d}</option>)}
+          </Select>
+        </Field>
+        <Input type="time" aria-label="Ora di inizio" value={single.startTime} onChange={(e) => setSingle({ ...single, startTime: e.target.value })} className="w-32" />
+        <Button variant="secondary" onClick={addSingle} disabled={!single.startTime}><Plus className="size-3.5" /> Aggiungi</Button>
       </div>
     </div>
   )
